@@ -1,79 +1,102 @@
-import { Link } from 'react-router-dom';
-import logo from '../assets/logo.svg';
+import { yupResolver } from "@hookform/resolvers/yup";
+import { useMutation } from "@tanstack/react-query";
+import { useForm } from "react-hook-form";
+import { Link, useNavigate } from "react-router-dom";
+import * as yup from "yup";
+import AuthLayout from "../components/AuthLayout";
+import { PrimaryButton } from "../components/Buttons";
+import Checkbox from "../components/Checkbox";
+import Form from "../components/Form";
+import PasswordField from "../components/PasswordField";
+import TextField from "../components/TextField";
+import Warnings from "../components/Warnings";
+import { ErrorWarning, useWarnings } from "../hooks/useWarnings";
+import { useAuth } from "../provider/authProvider";
+import { callAPI } from "../utils/apiService";
+import isInvalid from "../utils/isInvalid";
+
+const schema = yup.object().shape({
+  email: yup.string().required("Email cannot be empty."),
+  password: yup.string().required("Password cannot be empty."),
+});
+
+type FormFields = yup.InferType<typeof schema>;
+type LoginResponse = { token: string };
 
 export default function Login() {
+  const navigate = useNavigate();
+  const { setToken } = useAuth();
+
+  const { warnings, pushWarning, removeWarning, clearWarnings } = useWarnings();
+
+  const form = useForm<FormFields>({
+    mode: "onChange",
+    reValidateMode: "onChange",
+    criteriaMode: "all",
+    resolver: yupResolver(schema),
+  });
+
+  const loginMutation = useMutation({
+    mutationFn: ({ email, password }: FormFields) =>
+      callAPI<LoginResponse>("/users/login", { email, password }),
+    onSuccess: (response: LoginResponse) => {
+      setToken(response.token);
+      navigate("/");
+    },
+    onError: (err: Error) => {
+      pushWarning(new ErrorWarning(err.message));
+    },
+  });
+
+  const handleLogin = async ({ email, password }: FormFields) => {
+    clearWarnings();
+    loginMutation.mutate({ email, password });
+  };
+
+  const handleRememberChange = (checked: boolean) => {
+    console.log("Remember me checkbox is checked: " + checked);
+  };
+
+  const onGoogleAuthLogin = () => {
+    console.log("User requested to login with google");
+  };
+
   return (
-    <>
-      <div className="flex min-h-full flex-1 flex-col justify-center px-6 py-12 lg:px-8">
-        <div className="sm:mx-auto sm:w-full sm:max-w-sm">
-          <img
-            className="mx-auto h-16 w-auto"
-            src={logo}
-            alt="Backoffice"
+    <AuthLayout page="login" title="Sign in to your account">
+      <Form onSubmit={form.handleSubmit(handleLogin)}>
+        <TextField form={form} name="email" key="email" title="Email" />
+
+        <PasswordField
+          form={form}
+          name="password"
+          key="password"
+          title="Password"
+        />
+
+        <div className="flex items-center justify-between">
+          <Checkbox
+            name="remember"
+            title="Remember me"
+            onChange={handleRememberChange}
           />
-          <h2 className="mt-10 text-center text-2xl font-bold leading-9 tracking-tight text-gray-900">
-            Sign in to your account
-          </h2>
+
+          <Link
+            to="/forgot-password"
+            className="text-sm font-medium text-primary-600 hover:underline"
+          >
+            <span>Forgot password?</span>
+          </Link>
         </div>
 
-        <div className="mt-10 sm:mx-auto sm:w-full sm:max-w-sm">
-          <form className="space-y-6" action="/login" method="POST">
-            <div>
-              <label htmlFor="email" className="block text-sm font-medium leading-6 text-gray-900">
-                Email address
-              </label>
-              <div className="mt-2">
-                <input
-                  id="email"
-                  name="email"
-                  type="email"
-                  autoComplete="email"
-                  required
-                  className="block w-full rounded-md border-0 p-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6"
-                />
-              </div>
-            </div>
+        <PrimaryButton
+          title="Login"
+          type="submit"
+          loading={loginMutation.isPending}
+          disabled={isInvalid<FormFields>(form)}
+        />
+      </Form>
 
-            <div>
-              <div className="flex items-center justify-between">
-                <label htmlFor="password" className="block text-sm font-medium leading-6 text-gray-900">
-                  Password
-                </label>
-                <div className="text-sm">
-                  <Link to="/forgot-password" className="text-indigo-600 hover:text-indigo-500">
-                    <span className="font-semibold">Forgot password?</span>
-                  </Link>
-                </div>
-              </div>
-              <div className="mt-2">
-                <input
-                  id="password"
-                  name="password"
-                  type="password"
-                  autoComplete="current-password"
-                  required
-                  className="block w-full rounded-md border-0 p-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6"
-                />
-              </div>
-            </div>
-
-            <div>
-              <button
-                type="submit"
-                className="flex w-full justify-center rounded-md bg-indigo-600 px-3 py-1.5 text-sm font-semibold leading-6 text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
-              >
-                Sign in
-              </button>
-            </div>
-          </form>
-        </div>
-        <div className="mt-10 sm:mx-auto sm:w-full sm:max-w-sm">
-          <button className="w-full	px-4 py-2 border flex gap-2 border-slate-200 dark:border-slate-700 rounded-lg text-slate-700 dark:text-slate-200 hover:border-slate-400 dark:hover:border-slate-500 hover:text-slate-900 dark:hover:text-slate-300 hover:shadow transition duration-150">
-            <img className="w-6 h-6" src="https://www.svgrepo.com/show/475656/google-color.svg" loading="lazy" alt="google logo" />
-            <span>Login with Google</span>
-          </button>
-        </div>
-      </div>
-    </>
-  )
+      <Warnings list={warnings} onClose={(item) => removeWarning(item)} />
+    </AuthLayout>
+  );
 }

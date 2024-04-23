@@ -1,7 +1,12 @@
+import Layout from "../components/Layout";
+import { Breadcrumb } from "../types/Breadcrumb";
+
 export default function Dashboard() {
+  const breadcrumb: Breadcrumb = [{ title: "Overview" }];
+
   return (
-    <h1 className="text-3xl font-bold underline">
-      Hello world!
-    </h1>
-  )
+    <Layout breadcrumb={breadcrumb}>
+      <div className="mx-auto max-w-2xl"></div>
+    </Layout>
+  );
 }
